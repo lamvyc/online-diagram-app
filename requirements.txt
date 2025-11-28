@@ -1,0 +1,3 @@
+# 用于记录项目依赖
+
+# 安装FastAPI作为Web框架，Uvicorn作为服务器，SQLAlchemy作为ORM，以及与MySQL连接的驱动。
