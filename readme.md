@@ -22,3 +22,13 @@ uvicorn app.main:app --reload
 
 <!-- 每次提交代码前，请重新生成 requirements.txt 以确保依赖版本一致： -->
 pip freeze > requirements.txt
+
+
+### 数据库初始化
+mysql -u root -p
+密码：root1234
+
+<!-- 成功登录后，你需要告诉 MySQL 你要操作哪个数据库。 -->
+USE online_diagram_db;
+<!-- 查看有哪些用户 -->
+SELECT * FROM users;

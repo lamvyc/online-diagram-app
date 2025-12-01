@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from . import models, schemas, crud
+from . import models, schemas, crud, security
 from .database import engine, SessionLocal
 
 models.Base.metadata.create_all(bind=engine)
@@ -24,22 +25,41 @@ def read_root():
     return {"message": "你好，欢迎来到在线流程图API！"}
 
 
-# --- User Registration Endpoint ---
 @app.post("/auth/register", response_model=schemas.UserOut)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # 1. 检查用户名是否已存在
     db_user_by_username = crud.get_user_by_username(db, username=user.username)
     if db_user_by_username:
         raise HTTPException(status_code=400, detail="用户名已被注册")
 
-    # 2. 检查邮箱是否已存在
     db_user_by_email = crud.get_user_by_email(db, email=user.email)
     if db_user_by_email:
         raise HTTPException(status_code=400, detail="邮箱已被注册")
 
-    # 3. 创建新用户
     new_user = crud.create_user(db=db, user=user)
     return new_user
+
+
+# --- NEW: User Login Endpoint ---
+@app.post("/auth/login", response_model=schemas.Token)
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # 1. 根据用户名从数据库查找用户
+    user = crud.get_user_by_username(db, username=form_data.username)
+    
+    # 2. 验证用户是否存在，以及密码是否正确
+    if not user or not security.verify_password(form_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="不正确的用户名或密码",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    # 3. 如果验证成功，为该用户创建一个access token
+    access_token = security.create_access_token(
+        data={"sub": user.username}
+    )
+    
+    # 4. 返回token
+    return {"access_token": access_token, "token_type": "bearer"}
 
 # 总结：
 # Depends(get_db): 这是FastAPI的“依赖注入”系统。它告诉FastAPI，在调用register_user函数之前，必须先执行get_db函数，并将其返回的db会话对象作为参数传入。

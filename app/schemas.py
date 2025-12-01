@@ -5,6 +5,7 @@
 # 使用三引号字符串（''' 或 """）—— 实际是字符串，不是注释！
 from pydantic import BaseModel, EmailStr
 import datetime
+from typing import Optional
 
 # --- User Schemas ---
 
@@ -25,4 +26,12 @@ class UserOut(BaseModel):
     # from_attributes = True 告诉Pydantic模型去读取SQLAlchemy模型的数据
     class Config:
         from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
+
 
