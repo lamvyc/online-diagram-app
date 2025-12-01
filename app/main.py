@@ -2,46 +2,38 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+# 导入项目中的模块
 from . import models, schemas, crud, security
-from .database import engine, SessionLocal
+from .database import engine
 
+# 创建数据库表
 models.Base.metadata.create_all(bind=engine)
 
+# 创建FastAPI应用实例
 app = FastAPI()
 
-# --- Dependency ---
-# 创建一个依赖项，用于在每个请求中获取数据库会话
-# 它会创建一个会话，在请求处理完后关闭它
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
+# --- 根路由 ---
 @app.get("/")
 def read_root():
     return {"message": "你好，欢迎来到在线流程图API！"}
 
+# --- 认证路由 ---
 
 @app.post("/auth/register", response_model=schemas.UserOut)
-def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def register_user(user: schemas.UserCreate, db: Session = Depends(security.get_db)):
     db_user_by_username = crud.get_user_by_username(db, username=user.username)
     if db_user_by_username:
-        raise HTTPException(status_code=400, detail="用户名已被注册")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户名已被注册")
 
     db_user_by_email = crud.get_user_by_email(db, email=user.email)
     if db_user_by_email:
-        raise HTTPException(status_code=400, detail="邮箱已被注册")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="邮箱已被注册")
 
     new_user = crud.create_user(db=db, user=user)
     return new_user
 
-
-# --- NEW: User Login Endpoint ---
 @app.post("/auth/login", response_model=schemas.Token)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(security.get_db)):
     # 1. 根据用户名从数据库查找用户
     user = crud.get_user_by_username(db, username=form_data.username)
     
@@ -60,6 +52,18 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     
     # 4. 返回token
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+# --- 用户路由 (受保护) ---
+
+@app.get("/users/me", response_model=schemas.UserOut)
+def read_users_me(current_user: models.User = Depends(security.get_current_user)):
+    """
+    获取当前登录用户的信息。
+    这个接口受OAuth2保护，请求时需要在Authorization header中提供Bearer Token。
+    """
+    return current_user
+
 
 # 总结：
 # Depends(get_db): 这是FastAPI的“依赖注入”系统。它告诉FastAPI，在调用register_user函数之前，必须先执行get_db函数，并将其返回的db会话对象作为参数传入。
