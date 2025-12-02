@@ -98,6 +98,20 @@ def read_users_me(current_user: models.User = Depends(security.get_current_user)
     """
     return current_user
 
+@app.post("/diagrams", response_model=schemas.Diagram, status_code=status.HTTP_201_CREATED)
+def create_diagram(
+    diagram: schemas.DiagramCreate, 
+    db: Session = Depends(security.get_db), 
+    current_user: models.User = Depends(security.get_current_user)
+):
+    """
+    为当前登录用户创建一个新的流程图。
+    
+    - **title**: 流程图的标题。
+    - **content**: (可选) 流程图的初始JSON内容。
+    """
+    return crud.create_user_diagram(db=db, diagram=diagram, user_id=current_user.id)
+
 
 # 总结：
 # Depends(get_db): 这是FastAPI的“依赖注入”系统。它告诉FastAPI，在调用register_user函数之前，必须先执行get_db函数，并将其返回的db会话对象作为参数传入。

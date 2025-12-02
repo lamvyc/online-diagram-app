@@ -29,3 +29,19 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.refresh(db_user)
     
     return db_user
+
+def create_user_diagram(db: Session, diagram: schemas.DiagramCreate, user_id: int):
+    """
+    为指定用户创建一个新的流程图。
+    """
+    # 创建一个SQLAlchemy Diagram模型实例
+    db_diagram = models.Diagram(
+        **diagram.model_dump(),  # 将Pydantic模型转为字典
+        user_id=user_id
+    )
+    
+    db.add(db_diagram)
+    db.commit()
+    db.refresh(db_diagram)
+    return db_diagram
+

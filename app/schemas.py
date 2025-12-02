@@ -5,7 +5,7 @@
 # 使用三引号字符串（''' 或 """）—— 实际是字符串，不是注释！
 from pydantic import BaseModel, EmailStr
 import datetime
-from typing import Optional
+from typing import Optional, Any # 确保导入了 Any
 
 # --- User Schemas ---
 
@@ -33,5 +33,26 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+# 基础模型，包含所有Diagram共有的字段
+class DiagramBase(BaseModel):
+    title: str
+    content: Optional[Any] = None # content可以是任何JSON结构，所以用Any
+
+
+# 用于创建Diagram的Schema (输入)
+class DiagramCreate(DiagramBase):
+    pass # 目前创建时和Base一样，但为了扩展性，我们单独定义
+
+
+# 用于API响应的Schema (输出)，包含从数据库读取的字段
+class Diagram(DiagramBase):
+    id: int
+    user_id: int
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+
+    class Config:
+        from_attributes = True # 之前叫 orm_mode
 
 
