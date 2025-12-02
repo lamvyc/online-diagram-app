@@ -37,7 +37,7 @@ def custom_openapi():
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "输入你的 Bearer Token. 格式: 'Bearer &lt;token&gt;'"
+        "description": "输入你的 Bearer Token. 格式: 'Bearer &lt;token&gt;（只粘贴 token 本身）'"
     }
             
     app.openapi_schema = openapi_schema
@@ -111,6 +111,20 @@ def create_diagram(
     - **content**: (可选) 流程图的初始JSON内容。
     """
     return crud.create_user_diagram(db=db, diagram=diagram, user_id=current_user.id)
+
+@app.get("/diagrams", response_model=list[schemas.Diagram])
+def read_diagrams(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(security.get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    """
+    获取当前登录用户的所有流程图列表。
+    支持分页查询。
+    """
+    diagrams = crud.get_user_diagrams(db, user_id=current_user.id, skip=skip, limit=limit)
+    return diagrams
 
 
 # 总结：

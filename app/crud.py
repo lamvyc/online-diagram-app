@@ -45,3 +45,8 @@ def create_user_diagram(db: Session, diagram: schemas.DiagramCreate, user_id: in
     db.refresh(db_diagram)
     return db_diagram
 
+def get_user_diagrams(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    """
+    根据用户ID获取其所有的流程图，支持分页。
+    """
+    return db.query(models.Diagram).filter(models.Diagram.user_id == user_id).offset(skip).limit(limit).all()
