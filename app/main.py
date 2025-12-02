@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from fastapi.openapi.utils import get_openapi
 
 # 导入项目中的模块
 from . import models, schemas, crud, security
@@ -11,6 +12,39 @@ models.Base.metadata.create_all(bind=engine)
 
 # 创建FastAPI应用实例
 app = FastAPI()
+
+# --- 终极自定义OpenAPI Schema ---
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    # 1. 获取默认的schema
+    openapi_schema = get_openapi(
+        title="在线流程图 API",
+        version="1.0.0",
+        description="一个用于在线绘制和保存流程图的后端API服务",
+        routes=app.routes,
+    )
+    
+    # 2. 找到 `components` -> `securitySchemes`
+    if "components" not in openapi_schema:
+        openapi_schema["components"] = {}
+    if "securitySchemes" not in openapi_schema["components"]:
+        openapi_schema["components"]["securitySchemes"] = {}
+        
+    # 3. 强制用我们想要的、最简单的 Bearer Token 认证方案来覆盖它
+    openapi_schema["components"]["securitySchemes"]["OAuth2PasswordBearer"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "输入你的 Bearer Token. 格式: 'Bearer &lt;token&gt;'"
+    }
+            
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+# 4. 应用这个自定义函数
+app.openapi = custom_openapi
 
 # --- 根路由 ---
 @app.get("/")
