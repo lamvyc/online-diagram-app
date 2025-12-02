@@ -150,6 +150,52 @@ def read_diagram(
     # 4. 如果所有检查都通过，返回图的信息
     return db_diagram
 
+@app.put("/diagrams/{diagram_id}", response_model=schemas.Diagram)
+def update_diagram_route(
+    diagram_id: int,
+    diagram_update: schemas.DiagramCreate,
+    db: Session = Depends(security.get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    """
+    更新指定的流程图。
+    只能更新属于当前登录用户的流程图。
+    """
+    # 1. 复用权限校验逻辑
+    db_diagram = crud.get_diagram(db, diagram_id=diagram_id)
+    if db_diagram is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="流程图未找到")
+    if db_diagram.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权访问此资源")
+        
+    # 2. 调用CRUD函数执行更新
+    return crud.update_diagram(db=db, db_diagram=db_diagram, diagram_update=diagram_update)
+
+
+@app.delete("/diagrams/{diagram_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_diagram_route(
+    diagram_id: int,
+    db: Session = Depends(security.get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    """
+    删除指定的流程图。
+    只能删除属于当前登录用户的流程图。
+    """
+    # 1. 再次复用权限校验逻辑
+    db_diagram = crud.get_diagram(db, diagram_id=diagram_id)
+    if db_diagram is None:
+        # 即使图不存在，对于DELETE操作，返回404也是合适的
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="流程图未找到")
+    if db_diagram.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权访问此资源")
+        
+    # 2. 调用CRUD函数执行删除
+    crud.delete_diagram(db=db, db_diagram=db_diagram)
+    
+    # 3. 对于 204 状态码，FastAPI 不会发送任何响应体
+    return None
+
 
 # 总结：
 # Depends(get_db): 这是FastAPI的“依赖注入”系统。它告诉FastAPI，在调用register_user函数之前，必须先执行get_db函数，并将其返回的db会话对象作为参数传入。

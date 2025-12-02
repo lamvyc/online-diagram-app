@@ -56,3 +56,31 @@ def get_diagram(db: Session, diagram_id: int):
     根据ID获取单个流程图。
     """
     return db.query(models.Diagram).filter(models.Diagram.id == diagram_id).first()
+
+def update_diagram(db: Session, db_diagram: models.Diagram, diagram_update: schemas.DiagramCreate):
+    """
+    更新指定的流程图。
+    """
+    # 1. 获取 Pydantic 模型中的数据，并转为字典
+    update_data = diagram_update.model_dump(exclude_unset=True)
+    
+    # 2. 遍历字典，更新 SQLAlchemy 模型对象的属性
+    for key, value in update_data.items():
+        setattr(db_diagram, key, value)
+        
+    # 3. 提交更改
+    db.add(db_diagram)
+    db.commit()
+    db.refresh(db_diagram)
+    return db_diagram
+
+
+# --- NEW: Delete Diagram Function ---
+
+def delete_diagram(db: Session, db_diagram: models.Diagram):
+    """
+    删除指定的流程图。
+    """
+    db.delete(db_diagram)
+    db.commit()
+    # 删除后，我们通常不返回任何东西，所以在路由层直接返回一个成功状态即可
