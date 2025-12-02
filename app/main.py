@@ -126,6 +126,30 @@ def read_diagrams(
     diagrams = crud.get_user_diagrams(db, user_id=current_user.id, skip=skip, limit=limit)
     return diagrams
 
+@app.get("/diagrams/{diagram_id}", response_model=schemas.Diagram)
+def read_diagram(
+    diagram_id: int,
+    db: Session = Depends(security.get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    """
+    获取单个流程图的详细信息。
+    只能获取属于当前登录用户的流程图。
+    """
+    # 1. 从数据库获取图
+    db_diagram = crud.get_diagram(db, diagram_id=diagram_id)
+    
+    # 2. 检查图是否存在
+    if db_diagram is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="流程图未找到")
+        
+    # 3. ‼️ 关键：检查图的所有者是否是当前用户
+    if db_diagram.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权访问此资源")
+        
+    # 4. 如果所有检查都通过，返回图的信息
+    return db_diagram
+
 
 # 总结：
 # Depends(get_db): 这是FastAPI的“依赖注入”系统。它告诉FastAPI，在调用register_user函数之前，必须先执行get_db函数，并将其返回的db会话对象作为参数传入。

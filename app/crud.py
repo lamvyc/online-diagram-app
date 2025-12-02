@@ -50,3 +50,9 @@ def get_user_diagrams(db: Session, user_id: int, skip: int = 0, limit: int = 100
     根据用户ID获取其所有的流程图，支持分页。
     """
     return db.query(models.Diagram).filter(models.Diagram.user_id == user_id).offset(skip).limit(limit).all()
+
+def get_diagram(db: Session, diagram_id: int):
+    """
+    根据ID获取单个流程图。
+    """
+    return db.query(models.Diagram).filter(models.Diagram.id == diagram_id).first()
