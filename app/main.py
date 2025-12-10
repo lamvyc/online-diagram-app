@@ -1,4 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
+# ‼️ 导入 FastAPI 的请求验证错误类
+from fastapi.exceptions import RequestValidationError
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from fastapi.openapi.utils import get_openapi
@@ -12,6 +15,51 @@ models.Base.metadata.create_all(bind=engine)
 
 # 创建FastAPI应用实例
 app = FastAPI()
+
+# --- ‼️ NEW: 自定义异常处理器 ---
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    捕获并自定义处理 Pydantic 的请求体验证错误。
+    """
+    error_messages = []
+    
+    # ‼️ 检查是否是 JSON decode error
+    # 这种错误的 errors() 列表通常只有一个元素
+    if len(exc.errors()) == 1 and exc.errors()[0]['type'] == 'json_invalid':
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST, # 对于无效JSON，400更合适
+            content={
+                "detail": "无效的JSON格式 (Invalid JSON format)",
+                "error_detail": exc.errors()[0]['msg'] # 直接使用原始的解码错误信息
+            },
+        )
+    for error in exc.errors():
+        # 'loc' 是一个元组，例如 ('body', 'username')
+        # 我们把它转换成 'body.username' 的形式
+        field_path = ".".join(str(loc_item) for loc_item in error['loc'])
+        
+        error_type = error['type']
+        msg = error['msg']
+        
+        # 根据不同的错误类型，生成更友好的消息
+        if error_type == 'missing':
+            message = f"字段 '{field_path}' 是必需的 (Field is required)。"
+        elif 'string' in error_type:
+            message = f"字段 '{field_path}' 必须是有效的字符串 (Must be a valid string)。"
+        elif error_type == 'value_error':
+            # 这种通常是 pydantic 自定义校验的错误，msg 已经足够清晰
+            message = f"字段 '{field_path}' 的值无效: {msg}"
+        else:
+            # 对于其他未知错误，保留原始消息
+            message = f"字段 '{field_path}' 发生错误: {msg}"
+            
+        error_messages.append({"error_field": field_path, "error_detail": message})
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": "请求体验证失败 (Request body validation failed)", "errors": error_messages},
+    )
 
 # --- 终极自定义OpenAPI Schema ---
 def custom_openapi():
@@ -153,7 +201,7 @@ def read_diagram(
 @app.put("/diagrams/{diagram_id}", response_model=schemas.Diagram)
 def update_diagram_route(
     diagram_id: int,
-    diagram_update: schemas.DiagramCreate,
+    diagram_update: schemas.DiagramUpdate,
     db: Session = Depends(security.get_db),
     current_user: models.User = Depends(security.get_current_user)
 ):

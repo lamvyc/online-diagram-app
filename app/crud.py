@@ -57,7 +57,7 @@ def get_diagram(db: Session, diagram_id: int):
     """
     return db.query(models.Diagram).filter(models.Diagram.id == diagram_id).first()
 
-def update_diagram(db: Session, db_diagram: models.Diagram, diagram_update: schemas.DiagramCreate):
+def update_diagram(db: Session, db_diagram: models.Diagram, diagram_update: schemas.DiagramUpdate):
     """
     更新指定的流程图。
     """

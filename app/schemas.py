@@ -55,4 +55,9 @@ class Diagram(DiagramBase):
     class Config:
         from_attributes = True # 之前叫 orm_mode
 
+# 这个模型用于更新操作，所有字段都应该是可选的
+class DiagramUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Any
+
 
